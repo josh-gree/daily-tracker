@@ -331,12 +331,6 @@ async function exportPdf(days, name, btn) {
     await loadPdfLib();
     const bytes = await window.buildTrackerPdf(days, pdfFmt);
     const file = new File([bytes], name, { type: "application/pdf" });
-    // On Android the share sheet lets you save to Files/Drive or send it on;
-    // fall back to a normal download where sharing files isn't supported.
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try { await navigator.share({ files: [file], title: "My Daily Tracker" }); return; }
-      catch (err) { if (err.name === "AbortError") return; }
-    }
     download(name, file);
   } catch (err) {
     ask(`Couldn't make the PDF: ${err.message}`);

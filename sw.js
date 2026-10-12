@@ -1,5 +1,5 @@
 // Bump VERSION whenever any app-shell file changes so clients pick up the update.
-const VERSION = "v7";
+const VERSION = "v8";
 const CACHE = `daily-tracker-${VERSION}`;
 const SHELL = [
   "./",

@@ -17,7 +17,7 @@ Live: https://josh-gree.github.io/daily-tracker/
 - History: 14-day energy chart, list of logged days, JSON backup export/import, CSV export.
 - Export as PDF: one A4 page per logged day in a date range (or "Export this day as PDF"
   on the Day tab), drawn in the style of the printed worksheet. On Android it opens the
-  share sheet; elsewhere it downloads. An empty day exports as a blank sheet for printing.
+  It downloads straight to the device. An empty day exports as a blank sheet for printing.
   Long days continue onto extra pages. Uses the built-in Helvetica font, so emoji are
   dropped and non-Latin scripts show as "?".
 - About: the worksheet's intro and its example day.
