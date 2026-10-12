@@ -35,3 +35,7 @@ Live: https://josh-gree.github.io/daily-tracker/
 A PWA must be served over HTTPS. Host this folder on any static host (GitHub
 Pages, Netlify Drop, Cloudflare Pages), open the URL in Chrome on the phone,
 then tap **Install** in the app bar (or ⋮ → *Add to Home screen* / *Install app*).
+
+## Source
+`source/CFS_Health_Daily_Tracker.pdf` is the original worksheet this app is based on.
+It is not part of the app and the service worker does not cache it.
