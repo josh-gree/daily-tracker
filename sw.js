@@ -1,5 +1,5 @@
 // Bump VERSION (and APP_VERSION in app.js) whenever any app-shell file changes.
-const VERSION = "v13";
+const VERSION = "v14";
 const CACHE = `daily-tracker-${VERSION}`;
 const SHELL = [
   "./",
@@ -38,7 +38,9 @@ self.addEventListener("activate", (e) => {
 // used when offline or when the network is too slow to answer.
 self.addEventListener("fetch", (e) => {
   const req = e.request;
-  if (req.method !== "GET" || new URL(req.url).origin !== location.origin) return;
+  const url = new URL(req.url);
+  // The cloud backup API is never cached: it must always talk to the server.
+  if (req.method !== "GET" || url.origin !== location.origin || url.pathname.includes("/api/")) return;
   e.respondWith((async () => {
     const cache = await caches.open(CACHE);
     const fromCache = () => cache.match(req, { ignoreSearch: true })

@@ -1,6 +1,6 @@
 "use strict";
 
-const APP_VERSION = "v13"; // keep in step with VERSION in sw.js
+const APP_VERSION = "v14"; // keep in step with VERSION in sw.js
 
 const STORE_KEY = "daily-tracker:v1";
 const DEFAULT_SLOTS = [
@@ -36,8 +36,8 @@ function loadAll() {
   } catch { return {}; }
 }
 let db = loadAll();
-function persist() {
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(db)); flashSaved(); }
+function persist(quiet) {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(db)); if (!quiet) flashSaved(); }
   catch { flashSaved("Couldn't save — storage unavailable"); }
 }
 if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
@@ -70,6 +70,101 @@ let day = db[current] ? structuredClone(db[current]) : blankDay();
 function save() {
   if (isEmpty(day)) delete db[current]; else db[current] = structuredClone(day);
   persist();
+  markChanged(current);
+}
+
+// ---------- cloud backup ----------
+// When the app is served with its /api (Cloudflare Pages + Access), every change
+// is also sent to the cloud copy, and changes made on another device are pulled
+// in. The phone's copy stays the one the app works from, so it still works offline;
+// days changed here but not yet sent are remembered in SYNC_KEY until they are.
+// Where there's no /api (e.g. GitHub Pages), all of this quietly stays off.
+const SYNC_KEY = "daily-tracker:sync";
+function loadSync() {
+  try {
+    const m = JSON.parse(localStorage.getItem(SYNC_KEY));
+    if (m && m.pending) return m;
+  } catch { /* fall through */ }
+  // First run with backup: send everything already on the phone. Timestamp 1 so a
+  // newer cloud copy of the same day (from another device) wins over it.
+  return { pending: Object.fromEntries(Object.keys(db).map((d) => [d, 1])) };
+}
+let sync = loadSync();
+let syncState = "unknown"; // unknown | off | ok | offline | signin
+function saveSync() { try { localStorage.setItem(SYNC_KEY, JSON.stringify(sync)); } catch { /* retried next change */ } }
+function markChanged(iso) {
+  sync.pending[iso] = Date.now(); saveSync();
+  scheduleSync(2000);
+}
+let syncTimer;
+function scheduleSync(ms) { clearTimeout(syncTimer); syncTimer = setTimeout(runSync, ms); }
+
+let syncing = false;
+async function runSync() {
+  if (syncing || syncState === "off") return;
+  syncing = true;
+  try {
+    const get = await fetch("api/days", { redirect: "manual", cache: "no-store" });
+    if (get.status === 404 || get.status === 405) { setSyncState("off"); return; }
+    if (get.type === "opaqueredirect" || get.status === 401 || get.status === 403) { setSyncState("signin"); return; }
+    if (!get.ok) throw new Error(`HTTP ${get.status}`);
+    mergeRemote((await get.json()).days || {});
+
+    const sent = { ...sync.pending };
+    if (Object.keys(sent).length) {
+      const days = {};
+      for (const [d, t] of Object.entries(sent)) days[d] = { data: db[d] ?? null, updatedAt: t };
+      const put = await fetch("api/days", {
+        method: "PUT", redirect: "manual", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ days }),
+      });
+      if (put.type === "opaqueredirect" || put.status === 401 || put.status === 403) { setSyncState("signin"); return; }
+      if (!put.ok) throw new Error(`HTTP ${put.status}`);
+      // Only clear days that weren't changed again while this was being sent.
+      for (const [d, t] of Object.entries(sent)) if (sync.pending[d] === t) delete sync.pending[d];
+      saveSync();
+    }
+    setSyncState(Object.keys(sync.pending).length ? "offline" : "ok");
+    if (Object.keys(sync.pending).length) scheduleSync(2000);
+  } catch {
+    setSyncState("offline");
+  } finally {
+    syncing = false;
+  }
+}
+
+// Take the cloud's version of every day not changed here since the last send.
+// A day the phone has but the cloud doesn't is queued to be sent.
+function mergeRemote(remote) {
+  let changed = false;
+  for (const [d, r] of Object.entries(remote)) {
+    if (d in sync.pending) continue;
+    if (r.data == null) { if (d in db) { delete db[d]; changed = true; } continue; }
+    const v = normalizeDay({ ...blankDay(), ...r.data });
+    if (JSON.stringify(v) !== JSON.stringify(db[d])) { db[d] = v; changed = true; }
+  }
+  for (const d of Object.keys(db)) if (!(d in remote) && !(d in sync.pending)) sync.pending[d] = 1;
+  saveSync();
+  if (!changed) return;
+  persist(true);
+  // Leave the open day alone while a note is being typed; the edit being made is newer anyway.
+  if (!$("#editDlg").open) goTo(current);
+  if (!$("#view-history").hidden) renderHistory();
+}
+
+function syncLabel() {
+  return {
+    ok: "Saved and backed up ✓",
+    offline: "Saved on this phone · will back up when online",
+    signin: "Saved on this phone · tap here to sign in and back up",
+  }[syncState] || "Saved on this device";
+}
+function setSyncState(s) {
+  syncState = s;
+  $("#saved").textContent = syncLabel();
+  $("#saved").classList.toggle("tappable", s === "signin");
+  $("#backupNote").textContent = s === "off"
+    ? "Your entries live only on this phone. Export a backup now and then."
+    : "Your entries are saved on this phone and backed up to the cloud whenever you're online. You can also export a backup file.";
 }
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -77,10 +172,10 @@ const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 let savedTimer;
-function flashSaved(msg = "Saved on this device ✓") {
+function flashSaved(msg = "Saved ✓") {
   const el = $("#saved"); el.textContent = msg;
   clearTimeout(savedTimer);
-  savedTimer = setTimeout(() => { el.textContent = "Saved on this device"; }, 1500);
+  savedTimer = setTimeout(() => { el.textContent = syncLabel(); }, 1500);
 }
 
 // In-page replacement for confirm()/alert(). Resolves true when OK is pressed.
@@ -346,9 +441,11 @@ async function importJson(file) {
     if (!days || typeof days !== "object") throw new Error("not a tracker backup");
     const n = Object.keys(days).filter((k) => /^\d{4}-\d{2}-\d{2}$/.test(k)).length;
     if (!(await ask(`Import ${n} day(s)? Days that already exist on this phone will be replaced by the backup's version.`, "Import"))) return;
-    for (const [k, v] of Object.entries(days)) {
-      if (/^\d{4}-\d{2}-\d{2}$/.test(k) && v && Array.isArray(v.slots)) db[k] = normalizeDay({ ...blankDay(), ...v });
+    for (let [k, v] of Object.entries(days)) {
+      if (v && "updatedAt" in v) v = v.data; // a copy from the cloud's snapshots table
+      if (/^\d{4}-\d{2}-\d{2}$/.test(k) && v && Array.isArray(v.slots)) { db[k] = normalizeDay({ ...blankDay(), ...v }); sync.pending[k] = Date.now(); }
     }
+    saveSync(); scheduleSync(0);
     persist(); goTo(current); renderHistory();
     ask("Backup imported.");
   } catch (err) {
@@ -431,10 +528,17 @@ $("#pdfDay").addEventListener("click", () => exportPdf([{ iso: current, entry: d
 $("#importFile").addEventListener("change", (e) => { const f = e.target.files[0]; if (f) importJson(f); e.target.value = ""; });
 
 // Pick up edits made in another tab/window, and roll over to the new day if the app was left open.
-window.addEventListener("storage", (e) => { if (e.key === STORE_KEY) { db = loadAll(); goTo(current); } });
+window.addEventListener("storage", (e) => {
+  if (e.key === STORE_KEY) { db = loadAll(); goTo(current); }
+  if (e.key === SYNC_KEY) sync = loadSync();
+});
+window.addEventListener("online", () => scheduleSync(0));
+$("#saved").addEventListener("click", () => { if (syncState === "signin") location.reload(); });
+scheduleSync(0);
 let lastToday = todayIso();
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState !== "visible") return;
+  scheduleSync(0);
   const t = todayIso();
   if (t !== lastToday) { if (current === lastToday) goTo(t); lastToday = t; renderDay(); }
 });
