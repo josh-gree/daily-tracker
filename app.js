@@ -1,5 +1,7 @@
 "use strict";
 
+const APP_VERSION = "v9"; // keep in step with VERSION in sw.js
+
 const STORE_KEY = "daily-tracker:v1";
 const DEFAULT_SLOTS = [
   ["7AM", "Breakfast"],
@@ -411,6 +413,7 @@ document.addEventListener("visibilitychange", () => {
 });
 
 renderDay();
+$("#appVersion").textContent = APP_VERSION;
 
 // ---------- install / offline ----------
 let deferredPrompt = null;
@@ -427,4 +430,13 @@ window.addEventListener("appinstalled", () => { $("#installBtn").hidden = true; 
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+  // When an updated version takes over this page, reload once so it shows straight away.
+  // Skipped on the very first install (no previous controller) and while editing a note.
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!hadController || reloaded || $("#editDlg").open) return;
+    reloaded = true;
+    location.reload();
+  });
 }

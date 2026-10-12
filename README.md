@@ -25,7 +25,7 @@ Live: https://josh-gree.github.io/daily-tracker/
 
 ## Files
 `index.html`, `app.css`, `app.js`, `pdf-export.js` (PDF layout), `manifest.webmanifest`,
-`sw.js` (cache-first service worker — bump `VERSION` after changing any file), `icons/`,
+`sw.js` (network-first service worker with an offline cache — bump `VERSION` here and `APP_VERSION` in `app.js` after changing any file), `icons/`,
 `vendor/pdf-lib.min.js` ([pdf-lib](https://pdf-lib.js.org) 1.17.1, MIT, loaded only when exporting).
 
 ## Run locally

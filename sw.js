@@ -1,5 +1,5 @@
-// Bump VERSION whenever any app-shell file changes so clients pick up the update.
-const VERSION = "v8";
+// Bump VERSION (and APP_VERSION in app.js) whenever any app-shell file changes.
+const VERSION = "v9";
 const CACHE = `daily-tracker-${VERSION}`;
 const SHELL = [
   "./",
@@ -14,25 +14,49 @@ const SHELL = [
   "icons/icon-maskable-512.png",
   "icons/apple-touch-icon.png",
 ];
+const NETWORK_TIMEOUT_MS = 4000;
 
+// cache: "reload" skips the browser's HTTP cache, which GitHub Pages lets hold
+// files for 10 minutes; without it a new version could be stored with old files.
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(
+    caches.open(CACHE)
+      .then((c) => c.addAll(SHELL.map((url) => new Request(url, { cache: "reload" }))))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener("activate", (e) => {
   e.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k.startsWith("daily-tracker-") && k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
 
-// Cache-first for the app shell; everything works offline after the first visit.
+// Network first, so the app is always current when online; the cached copy is
+// used when offline or when the network is too slow to answer.
 self.addEventListener("fetch", (e) => {
-  if (e.request.method !== "GET") return;
-  e.respondWith(
-    caches.match(e.request, { ignoreSearch: true }).then((hit) =>
-      hit || fetch(e.request).catch(() => caches.match("index.html"))
-    )
-  );
+  const req = e.request;
+  if (req.method !== "GET" || new URL(req.url).origin !== location.origin) return;
+  e.respondWith((async () => {
+    const cache = await caches.open(CACHE);
+    const fromCache = () => cache.match(req, { ignoreSearch: true })
+      .then((hit) => hit || (req.mode === "navigate" ? cache.match("./") : undefined));
+    const fromNetwork = fetch(req, { cache: "no-cache" }).then((res) => {
+      if (res.ok) cache.put(req, res.clone());
+      return res;
+    });
+    fromNetwork.catch(() => {}); // handled below; avoid an unhandled-rejection warning
+    const timeout = new Promise((resolve) => setTimeout(resolve, NETWORK_TIMEOUT_MS));
+    try {
+      const res = await Promise.race([fromNetwork, timeout]);
+      if (res) return res;
+      return (await fromCache()) || (await fromNetwork);
+    } catch {
+      const hit = await fromCache();
+      if (hit) return hit;
+      throw new Error("offline and not cached");
+    }
+  })());
 });
