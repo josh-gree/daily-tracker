@@ -10,7 +10,7 @@ Live: https://josh-gree.github.io/daily-tracker/
 - Morning and evening energy 1–10 (tap again to clear).
 - Water glasses counter.
 - Time slots (7AM breakfast, 10AM snack, 12 noon lunch, 2PM snack, 7PM dinner, 9PM),
-  each with Nutrition / Rest-movement-activities / How I feel.
+  each with Nutrition / How I feel / Rest-movement-activities / How I feel.
   The time slots are fixed. Tapping any note box (including the review questions)
   opens a pop-up editor; notes save as you type.
 - Review: worked well / didn't work / focus for tomorrow.

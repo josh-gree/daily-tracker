@@ -1,6 +1,6 @@
 "use strict";
 
-const APP_VERSION = "v12"; // keep in step with VERSION in sw.js
+const APP_VERSION = "v13"; // keep in step with VERSION in sw.js
 
 const STORE_KEY = "daily-tracker:v1";
 const DEFAULT_SLOTS = [
@@ -11,18 +11,20 @@ const DEFAULT_SLOTS = [
   ["7PM", "Dinner"],
   ["9PM", ""],
 ];
-const SLOT_FIELDS = ["nutrition", "activity", "feel"];
+const SLOT_FIELDS = ["nutrition", "nutFeel", "activity", "actFeel"];
 
 
 // ---------- storage ----------
-// Older entries had two "How I feel" notes per time slot (after eating and after
-// activity). They're now one; merge both into it so nothing typed is lost.
+// Each time slot has two "How I feel" notes, like the worksheet: one after eating,
+// one after activity. For a while there was a single combined one; it moves to the
+// nutrition side so nothing typed is lost.
 function normalizeDay(d) {
   for (const s of d.slots || []) {
-    if ("nutFeel" in s || "actFeel" in s) {
-      s.feel = [s.feel, s.nutFeel, s.actFeel].filter(Boolean).join("\n");
-      delete s.nutFeel; delete s.actFeel;
+    if ("feel" in s) {
+      s.nutFeel = [s.nutFeel, s.feel].filter(Boolean).join("\n");
+      delete s.feel;
     }
+    s.nutFeel ??= ""; s.actFeel ??= "";
   }
   return d;
 }
@@ -43,7 +45,7 @@ if (navigator.storage && navigator.storage.persist) navigator.storage.persist().
 function blankDay() {
   return {
     morning: null, evening: null, water: 0,
-    slots: DEFAULT_SLOTS.map(([time, meal]) => ({ time, meal, nutrition: "", activity: "", feel: "" })),
+    slots: DEFAULT_SLOTS.map(([time, meal]) => ({ time, meal, nutrition: "", nutFeel: "", activity: "", actFeel: "" })),
     worked: "", didnt: "", focus: "",
   };
 }
@@ -124,8 +126,9 @@ function renderWater() {
 
 const SLOT_CELLS = [
   ["nutrition", "nut", "Nutrition"],
+  ["nutFeel", "nut feel", "How I feel", "How I feel after eating"],
   ["activity", "act", "Rest / movement / activities"],
-  ["feel", "feel", "How I feel"],
+  ["actFeel", "act feel", "How I feel", "How I feel after activity"],
 ];
 const REVIEW_LABELS = {
   worked: "Things that worked well?",
@@ -230,11 +233,11 @@ function renderSlots() {
       <div class="slot-head"><span class="time">${esc(s.time)}</span><span class="meal">${esc(s.meal)}</span></div>
       <div class="cells"></div>`;
     const cells = $(".cells", card);
-    SLOT_CELLS.forEach(([key, cls, label]) => {
+    SLOT_CELLS.forEach(([key, cls, label, editLabel = label]) => {
       const b = noteButton(cls, label, s[key]);
       b.addEventListener("click", () => {
         const context = [s.time, s.meal].filter(Boolean).join(" · ");
-        openEditor(context, label, s[key], (text) => { s[key] = text; setNoteText(b, text); save(); });
+        openEditor(context, editLabel, s[key], (text) => { s[key] = text; setNoteText(b, text); save(); });
       });
       cells.appendChild(b);
     });
@@ -327,11 +330,11 @@ function exportJson() {
 }
 function exportCsv() {
   const q = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-  const rows = [["date", "morning", "evening", "water", "time", "meal", "nutrition", "activity", "how_i_feel", "worked_well", "didnt_work", "focus_tomorrow"]];
+  const rows = [["date", "morning", "evening", "water", "time", "meal", "nutrition", "nutrition_feel", "activity", "activity_feel", "worked_well", "didnt_work", "focus_tomorrow"]];
   for (const d of Object.keys(db).sort()) {
     const e = db[d];
     const slots = e.slots.length ? e.slots : [{}];
-    slots.forEach((s, i) => rows.push([d, e.morning, e.evening, e.water, s.time, s.meal, s.nutrition, s.activity, s.feel,
+    slots.forEach((s, i) => rows.push([d, e.morning, e.evening, e.water, s.time, s.meal, s.nutrition, s.nutFeel, s.activity, s.actFeel,
       i ? "" : e.worked, i ? "" : e.didnt, i ? "" : e.focus]));
   }
   download(`daily-tracker-${todayIso()}.csv`, rows.map((r) => r.map(q).join(",")).join("\r\n"), "text/csv");
