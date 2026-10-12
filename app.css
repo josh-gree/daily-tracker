@@ -141,7 +141,14 @@ dialog.editor {
   width: min(680px, calc(100vw - 24px)); height: min(78dvh, 720px); max-height: calc(100dvh - 24px);
   margin: auto; padding: 18px;
 }
-.editor form { display: flex; flex-direction: column; gap: 10px; height: 100%; }
+.editor form { position: relative; display: flex; flex-direction: column; gap: 10px; height: 100%; }
+.editor .close {
+  position: absolute; top: -12px; right: -8px; width: 44px; height: 44px; border-radius: 50%;
+  border: 0; background: transparent; color: var(--muted); font-size: 1.9rem; line-height: 1; cursor: pointer;
+}
+.editor .close:hover, .editor .close:active { background: var(--field); color: var(--text); }
+.editor .close:focus-visible { outline: 2px solid var(--navy); }
+.editor .ctx, .editor h2 { padding-right: 44px; }
 .editor .ctx { margin: 0; font-size: .8rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .editor h2 { margin: 0; font-size: 1.05rem; }
 .editor textarea { flex: 1; min-height: 6em; resize: none; font-size: 1.05rem; line-height: 1.5; padding: 12px 14px; }
