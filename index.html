@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <title>My Daily Tracker</title>
+  <meta name="description" content="Track energy, nutrition, rest and activity each day to find your baseline.">
+  <meta name="theme-color" content="#2b3990">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>My Daily Tracker</h1>
+    <button id="installBtn" class="install" hidden>Install</button>
+  </header>
+
+  <main>
+    <!-- DAY VIEW -->
+    <section id="view-day" class="view">
+      <div class="datenav">
+        <button id="prevDay" aria-label="Previous day">‹</button>
+        <label class="datepick">
+          <span id="dateLabel"></span>
+          <input type="date" id="dateInput" aria-label="Pick a date">
+        </label>
+        <button id="nextDay" aria-label="Next day">›</button>
+      </div>
+      <button id="todayBtn" class="linkbtn" hidden>Back to today</button>
+
+      <div class="card">
+        <h2>Rate how you feel at the beginning of the day</h2>
+        <div class="scale" data-field="morning" role="radiogroup" aria-label="Morning energy 1 to 10"></div>
+        <div class="scale-ends"><span>☹ low</span><span>high ☺</span></div>
+      </div>
+
+      <div class="card water">
+        <h2>Water</h2>
+        <div class="water-row">
+          <button class="round" data-water="-1" aria-label="Remove a glass">−</button>
+          <div class="glasses" id="glasses" aria-live="polite"></div>
+          <button class="round" data-water="1" aria-label="Add a glass">+</button>
+        </div>
+      </div>
+
+      <div id="slots"></div>
+
+      <div class="card">
+        <h2>Rate how you feel at the end of the day</h2>
+        <div class="scale" data-field="evening" role="radiogroup" aria-label="Evening energy 1 to 10"></div>
+        <div class="scale-ends"><span>☹ low</span><span>high ☺</span></div>
+      </div>
+
+      <div class="card">
+        <h2 class="review-h">Review</h2>
+        <div id="review" class="review"></div>
+      </div>
+      <p class="saved" id="saved">Saved on this device</p>
+      <button id="pdfDay" class="ghost">Export this day as PDF</button>
+    </section>
+
+    <!-- HISTORY VIEW -->
+    <section id="view-history" class="view" hidden>
+      <div class="card">
+        <h2>Energy — last 14 days</h2>
+        <div id="chart"></div>
+        <div class="legend"><span class="k am"></span>Start of day <span class="k pm"></span>End of day</div>
+      </div>
+      <div class="card">
+        <h2>Logged days</h2>
+        <ul id="dayList" class="daylist"></ul>
+      </div>
+      <div class="card">
+        <h2>Export as PDF</h2>
+        <p class="muted">One page per logged day, laid out like the printed tracker.</p>
+        <div class="range">
+          <label>From <input type="date" id="pdfFrom"></label>
+          <label>To <input type="date" id="pdfTo"></label>
+        </div>
+        <div class="btnrow">
+          <button type="button" data-range="7">Last 7 days</button>
+          <button type="button" data-range="14">Last 14 days</button>
+          <button type="button" data-range="all">All</button>
+        </div>
+        <button id="pdfRange" class="primary">Export PDF</button>
+      </div>
+      <div class="card">
+        <h2>Backup</h2>
+        <p class="muted">Your entries live only on this phone. Export a backup now and then.</p>
+        <div class="btnrow">
+          <button id="exportJson">Export backup</button>
+          <button id="exportCsv">Export CSV</button>
+          <label class="btn">Import backup<input type="file" id="importFile" accept="application/json,.json" hidden></label>
+        </div>
+      </div>
+    </section>
+
+    <!-- ABOUT VIEW -->
+    <section id="view-about" class="view" hidden>
+      <div class="card prose">
+        <h2>Introduction</h2>
+        <p>This daily activity tracker helps you monitor your activity load, nutrition, movement, sleep, and energy levels. Over 7–14 days, track your daily routine to establish your baseline and identify what works best for you. We recommend logging consistently for 7–14 days to effectively gauge your progress.</p>
+        <p>Use the energy scale to rate your morning and evening energy levels on a scale of 1 to 10. Record your meals and water intake, noting how you feel after each meal. Document your daily activities, including walks, chores, work, or school hours. Reflect on your day with notes on what worked well, what didn't, and areas to focus on tomorrow.</p>
+        <p>By staying mindful of your activities, energy levels, and well-being, you can make meaningful strides towards your health goals.</p>
+        <button id="loadExample" class="ghost">See an example day</button>
+        <p class="muted small">Adapted from the “My Daily Tracker” worksheet by Toby Morrison.</p>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabbar">
+    <button data-view="day" class="active"><span>📝</span>Day</button>
+    <button data-view="history"><span>📈</span>History</button>
+    <button data-view="about"><span>ℹ️</span>About</button>
+  </nav>
+
+  <dialog id="exampleDlg">
+    <div class="dlg-body" id="exampleBody"></div>
+    <form method="dialog"><button class="primary">Close</button></form>
+  </dialog>
+
+  <dialog id="editDlg" class="editor" aria-labelledby="editLabel">
+    <form method="dialog">
+      <p class="ctx" id="editContext"></p>
+      <h2 id="editLabel"></h2>
+      <textarea id="editText" rows="8" placeholder="Type here…"></textarea>
+      <button class="primary" value="done">Done</button>
+    </form>
+  </dialog>
+
+  <dialog id="askDlg">
+    <p id="askMsg"></p>
+    <form method="dialog" class="btnrow end">
+      <button id="askCancel" value="cancel">Cancel</button>
+      <button id="askOk" value="ok" class="primary">OK</button>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
