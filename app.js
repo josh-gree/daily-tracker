@@ -1,6 +1,6 @@
 "use strict";
 
-const APP_VERSION = "v10"; // keep in step with VERSION in sw.js
+const APP_VERSION = "v11"; // keep in step with VERSION in sw.js
 
 const STORE_KEY = "daily-tracker:v1";
 const DEFAULT_SLOTS = [
@@ -383,14 +383,16 @@ function loadPdfLib() {
 const pdfFmt = {
   weekday: (iso) => dateOf(iso).toLocaleDateString(undefined, { weekday: "long" }),
   date: (iso) => dateOf(iso).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" }),
+  short: (iso) => dateOf(iso).toLocaleDateString(undefined, { day: "numeric", month: "short" }),
+  row: (iso) => dateOf(iso).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric" }),
 };
 
-async function exportPdf(days, name, btn) {
+async function exportPdf(days, name, btn, opts = {}) {
   const label = btn.textContent;
   btn.disabled = true; btn.textContent = "Making PDF…";
   try {
     await loadPdfLib();
-    const bytes = await window.buildTrackerPdf(days, pdfFmt);
+    const bytes = await window.buildTrackerPdf(days, pdfFmt, opts);
     const file = new File([bytes], name, { type: "application/pdf" });
     download(name, file);
   } catch (err) {
@@ -400,20 +402,13 @@ async function exportPdf(days, name, btn) {
   }
 }
 
-function setPdfRange(n) {
-  const dates = Object.keys(db).sort();
-  $("#pdfTo").value = todayIso();
-  $("#pdfFrom").value = n === "all" ? (dates[0] || todayIso()) : shiftIso(todayIso(), -(Number(n) - 1));
-}
-
-function exportPdfRange() {
-  let from = $("#pdfFrom").value, to = $("#pdfTo").value;
-  if (!from || !to) { ask("Pick a start and end date first."); return; }
-  if (from > to) [from, to] = [to, from];
-  const days = Object.keys(db).sort().filter((d) => d >= from && d <= to).map((iso) => ({ iso, entry: db[iso] }));
-  if (!days.length) { ask(`Nothing is logged between ${fmtShort(from)} and ${fmtShort(to)}.`); return; }
+// Every logged day, plus a summary page when there's more than one.
+function exportPdfAll() {
+  const days = Object.keys(db).sort().map((iso) => ({ iso, entry: db[iso] }));
+  if (!days.length) { ask("Nothing is logged yet. Fill in a day on the Day tab first."); return; }
+  const from = days[0].iso, to = days[days.length - 1].iso;
   const name = from === to ? `daily-tracker-${from}.pdf` : `daily-tracker-${from}-to-${to}.pdf`;
-  exportPdf(days, name, $("#pdfRange"));
+  exportPdf(days, name, $("#pdfAll"), { summary: days.length > 1 });
 }
 
 // ---------- example ----------
@@ -456,11 +451,9 @@ $("#micBtn").addEventListener("click", () => (rec ? rec.stop() : startDictation(
 $$(".tabbar button").forEach((b) => b.addEventListener("click", () => showView(b.dataset.view)));
 $("#exportJson").addEventListener("click", exportJson);
 $("#exportCsv").addEventListener("click", exportCsv);
-$("#pdfRange").addEventListener("click", exportPdfRange);
-$$("[data-range]").forEach((b) => b.addEventListener("click", () => setPdfRange(b.dataset.range)));
+$("#pdfAll").addEventListener("click", exportPdfAll);
 // A day with nothing filled in still exports, as a blank sheet to print and fill by hand.
 $("#pdfDay").addEventListener("click", () => exportPdf([{ iso: current, entry: day }], `daily-tracker-${current}.pdf`, $("#pdfDay")));
-setPdfRange(7);
 $("#importFile").addEventListener("change", (e) => { const f = e.target.files[0]; if (f) importJson(f); e.target.value = ""; });
 $("#loadExample").addEventListener("click", showExample);
 

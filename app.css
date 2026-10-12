@@ -199,9 +199,6 @@ textarea:focus, input:focus { outline: 2px solid var(--navy); outline-offset: 1p
   padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--field);
   font-weight: 600; cursor: pointer;
 }
-.range { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
-.range label { display: flex; flex-direction: column; font-size: .8rem; font-weight: 600; color: var(--muted); flex: 1 1 140px; }
-.range input { margin-top: 4px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--field); }
 #pdfDay { margin-top: 4px; }
 button:disabled { opacity: .6; }
 .prose p { margin: 0 0 10px; }

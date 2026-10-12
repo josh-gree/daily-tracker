@@ -240,7 +240,119 @@
     drawReview(page, f, rev, y - 70);
   }
 
-  window.buildTrackerPdf = async function (days, fmt) {
+  // ---------- summary page (energy chart + table of ratings) ----------
+  const DAY_MS = 86400000;
+  const isoMs = (iso) => { const [y, m, d] = iso.split("-").map(Number); return Date.UTC(y, m - 1, d); };
+  const msIso = (ms) => new Date(ms).toISOString().slice(0, 10);
+
+  function summaryHeader(page, f, days, fmt, cont) {
+    const { rgb } = PDFLib;
+    page.drawRectangle({ x: 0, y: PAGE_H - 36, width: 164, height: 20, color: C.banner });
+    spaced(page, cont ? "SUMMARY (CONT.)" : "SUMMARY", { x: 82, y: PAGE_H - 29.5, size: 9, font: f.bold, color: rgb(1, 1, 1), center: true, spacing: 0.5 });
+    page.drawLine({ start: { x: 58, y: PAGE_H }, end: { x: 58, y: PAGE_H - 9 }, thickness: 1.2, color: C.banner });
+    const first = days[0].iso, last = days[days.length - 1].iso;
+    const range = `${fmt.date(first)} \u2013 ${fmt.date(last)}`;
+    page.drawText(range, { x: 552 - f.reg.widthOfTextAtSize(range, 9), y: PAGE_H - 29, size: 9, font: f.reg, color: C.ink });
+    const n = `${days.length} days logged`;
+    page.drawText(n, { x: 552 - f.reg.widthOfTextAtSize(n, 8), y: PAGE_H - 43, size: 8, font: f.reg, color: C.grey });
+  }
+
+  function energyChart(page, f, days, fmt, top) {
+    const CL = L + 24, CR = R - 8, CT = top - 30, CB = top - 230;
+    const t0 = isoMs(days[0].iso), span = Math.max(1, (isoMs(days[days.length - 1].iso) - t0) / DAY_MS);
+    const x = (iso) => CL + ((isoMs(iso) - t0) / DAY_MS / span) * (CR - CL);
+    const y = (v) => CB + ((v - 1) / 9) * (CT - CB);
+
+    page.drawText("Energy", { x: L, y: top - 10, size: LABEL + 1, font: f.bold, color: C.ink });
+    const sub = "Rated 1 (low) to 10 (high)";
+    page.drawText(sub, { x: L + 40, y: top - 10, size: 7.5, font: f.reg, color: C.grey });
+
+    for (let v = 1; v <= 10; v++) {
+      page.drawLine({ start: { x: CL, y: y(v) }, end: { x: CR, y: y(v) }, thickness: v === 1 ? 0.7 : 0.4, color: v === 1 ? C.grey : C.gridLine });
+      const t = String(v);
+      page.drawText(t, { x: CL - 6 - f.reg.widthOfTextAtSize(t, 7), y: y(v) - 2.5, size: 7, font: f.reg, color: C.grey });
+    }
+    // date labels: at most ~9, evenly spaced in days, always including the last day
+    const step = Math.max(1, Math.ceil((span + 1) / 9));
+    const labelAt = (iso) => {
+      const t = fmt.short(iso), w = f.reg.widthOfTextAtSize(t, 7);
+      page.drawText(t, { x: Math.min(CR - w, Math.max(CL, x(iso) - w / 2)), y: CB - 12, size: 7, font: f.reg, color: C.grey });
+      page.drawLine({ start: { x: x(iso), y: CB }, end: { x: x(iso), y: CB - 3 }, thickness: 0.5, color: C.grey });
+    };
+    for (let k = 0; k <= span; k += step) {
+      if (span - k < step * 0.6 && k !== 0) continue; // leave room for the last label
+      labelAt(msIso(t0 + k * DAY_MS));
+    }
+    labelAt(days[days.length - 1].iso);
+
+    // lines join ratings on consecutive calendar days; gaps stay gaps
+    for (const [key, color] of [["morning", C.am], ["evening", C.pm]]) {
+      let prev = null;
+      for (const { iso, entry } of days) {
+        const v = entry[key];
+        if (v == null) { prev = null; continue; }
+        if (prev && isoMs(iso) - isoMs(prev.iso) === DAY_MS) {
+          page.drawLine({ start: { x: x(prev.iso), y: y(prev.v) }, end: { x: x(iso), y: y(v) }, thickness: 1.6, color });
+        }
+        page.drawCircle({ x: x(iso), y: y(v), size: 2.4, color });
+        prev = { iso, v };
+      }
+    }
+    // legend
+    let lx = CL, ly = CB - 30;
+    for (const [label, color] of [["Start of day", C.am], ["End of day", C.pm]]) {
+      page.drawLine({ start: { x: lx, y: ly + 2.5 }, end: { x: lx + 14, y: ly + 2.5 }, thickness: 1.8, color });
+      page.drawText(label, { x: lx + 19, y: ly, size: 8, font: f.reg, color: C.ink });
+      lx += 19 + f.reg.widthOfTextAtSize(label, 8) + 22;
+    }
+    return ly - 18;
+  }
+
+  const TCOLS = [L, 216, 326, 436, R];
+  function ratingsHeader(page, f, top) {
+    const h = 20, labels = ["DATE", "START OF DAY", "END OF DAY", "WATER (GLASSES)"];
+    for (let i = 0; i < 4; i++) {
+      page.drawRectangle({ x: TCOLS[i], y: top - h, width: TCOLS[i + 1] - TCOLS[i], height: h, color: C.timeHead, borderColor: C.ink, borderWidth: 0.7 });
+      spaced(page, labels[i], { x: i ? (TCOLS[i] + TCOLS[i + 1]) / 2 : TCOLS[0] + PAD + 2, y: top - h / 2 - 2.6, size: 7, font: f.bold, color: C.ink, center: i > 0, spacing: 0.6 });
+    }
+    return top - h;
+  }
+  function ratingsRow(page, f, top, cells, { bold = false, shade = false } = {}) {
+    const h = 16, font = bold ? f.bold : f.reg;
+    if (shade) page.drawRectangle({ x: L, y: top - h, width: R - L, height: h, color: C.rowShade });
+    for (let i = 0; i < 4; i++) {
+      page.drawRectangle({ x: TCOLS[i], y: top - h, width: TCOLS[i + 1] - TCOLS[i], height: h, borderColor: C.ink, borderWidth: 0.5 });
+      const t = cells[i], w = font.widthOfTextAtSize(t, 8);
+      page.drawText(t, { x: i ? (TCOLS[i] + TCOLS[i + 1]) / 2 - w / 2 : TCOLS[0] + PAD + 2, y: top - h / 2 - 2.8, size: 8, font, color: C.ink });
+    }
+    return top - h;
+  }
+
+  function addSummary(doc, f, days, fmt) {
+    let page = doc.addPage([PAGE_W, PAGE_H]);
+    summaryHeader(page, f, days, fmt, false);
+    let y = energyChart(page, f, days, fmt, PAGE_H - 62);
+    page.drawText("Logged days", { x: L, y: y - 10, size: LABEL + 1, font: f.bold, color: C.ink });
+    y = ratingsHeader(page, f, y - 18);
+    const show = (v) => (v == null ? "\u2013" : String(v));
+    const avg = (key) => {
+      const vs = days.map((d) => d.entry[key]).filter((v) => v != null);
+      return vs.length ? (vs.reduce((a, b) => a + Number(b), 0) / vs.length).toFixed(1) : "\u2013";
+    };
+    const rows = days.map(({ iso, entry }) => [fmt.row(iso), show(entry.morning), show(entry.evening), String(entry.water || 0)]);
+    rows.push(["Average", avg("morning"), avg("evening"), avg("water")]);
+    rows.forEach((cells, i) => {
+      if (y - 16 < BOTTOM) {
+        page = doc.addPage([PAGE_W, PAGE_H]);
+        summaryHeader(page, f, days, fmt, true);
+        y = ratingsHeader(page, f, PAGE_H - 60);
+      }
+      const isAvg = i === rows.length - 1;
+      y = ratingsRow(page, f, y, cells, { bold: isAvg, shade: isAvg || i % 2 === 1 });
+    });
+  }
+
+  window.buildTrackerPdf = async function (days, fmt, opts = {}) {
     const { PDFDocument, StandardFonts, rgb } = PDFLib;
     C = {
       ink: rgb(0.13, 0.13, 0.13),
@@ -252,6 +364,10 @@
       mint: rgb(220 / 255, 238 / 255, 223 / 255),
       yellow: rgb(242 / 255, 242 / 255, 215 / 255),
       blue: rgb(222 / 255, 233 / 255, 246 / 255),
+      am: rgb(43 / 255, 57 / 255, 144 / 255),
+      pm: rgb(224 / 255, 169 / 255, 27 / 255),
+      gridLine: rgb(0.86, 0.86, 0.88),
+      rowShade: rgb(0.965, 0.965, 0.975),
     };
     const doc = await PDFDocument.create();
     doc.setTitle("My Daily Tracker");
@@ -261,6 +377,7 @@
       bold: await doc.embedFont(StandardFonts.HelveticaBold),
     };
     for (const { iso, entry } of days) addDay(doc, f, iso, entry, fmt);
+    if (opts.summary && days.length > 1) addSummary(doc, f, days, fmt);
     return doc.save();
   };
 })();
