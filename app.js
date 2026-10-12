@@ -1,6 +1,6 @@
 "use strict";
 
-const APP_VERSION = "v9"; // keep in step with VERSION in sw.js
+const APP_VERSION = "v10"; // keep in step with VERSION in sw.js
 
 const STORE_KEY = "daily-tracker:v1";
 const DEFAULT_SLOTS = [
@@ -172,6 +172,65 @@ function openEditor(context, label, value, onChange) {
   $("#editDlg").showModal();
   ta.focus();
   ta.setSelectionRange(ta.value.length, ta.value.length);
+}
+
+// ---------- dictation ----------
+// Chrome's built-in speech recognition (audio goes to Google, so it needs a
+// connection). One tap = one stretch of speech, added to the end of the note;
+// it stops by itself after a pause. Continuous mode repeats words on Android.
+const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null;
+
+function setMicState(state) {
+  const b = $("#micBtn");
+  b.dataset.state = state;
+  b.setAttribute("aria-pressed", String(state === "listening"));
+  $("#micLabel").textContent = state === "listening" ? "Listening… tap to stop" : state === "starting" ? "Starting…" : "Speak";
+}
+
+function joinSpoken(base, spoken) {
+  spoken = spoken.trim();
+  if (!spoken) return base;
+  const startSentence = !base.trim() || /[.!?]\s*$|\n\s*$/.test(base);
+  if (startSentence) spoken = spoken[0].toUpperCase() + spoken.slice(1);
+  const sep = !base || /\s$/.test(base) ? "" : " ";
+  return base + sep + spoken;
+}
+
+function stopDictation() {
+  if (rec) { rec.onresult = rec.onerror = null; try { rec.abort(); } catch {} rec = null; }
+  setMicState("idle");
+}
+
+function startDictation() {
+  const ta = $("#editText");
+  const base = ta.value;
+  rec = new SpeechRec();
+  rec.lang = navigator.language || "en-GB";
+  rec.interimResults = true;
+  rec.continuous = false;
+  rec.maxAlternatives = 1;
+  rec.onstart = () => setMicState("listening");
+  rec.onresult = (e) => {
+    let spoken = "";
+    for (let i = 0; i < e.results.length; i++) spoken += e.results[i][0].transcript;
+    ta.value = joinSpoken(base, spoken);
+    ta.scrollTop = ta.scrollHeight;
+    editorTarget?.(ta.value);
+  };
+  rec.onerror = (e) => {
+    const msg = {
+      "not-allowed": "Microphone access is blocked. Allow the microphone for this app in your phone's settings (or Chrome's site settings), then try again.",
+      "service-not-allowed": "Microphone access is blocked. Allow the microphone for this app in your phone's settings (or Chrome's site settings), then try again.",
+      "network": "Speech-to-text needs an internet connection. Try again when you're online, or use your keyboard's microphone instead.",
+      "audio-capture": "No microphone was found.",
+    }[e.error];
+    stopDictation();
+    if (msg) ask(msg);
+  };
+  rec.onend = () => { rec = null; setMicState("idle"); };
+  setMicState("starting");
+  try { rec.start(); } catch { stopDictation(); }
 }
 
 function renderSlots() {
@@ -391,7 +450,9 @@ $$("[data-water]").forEach((b) => b.addEventListener("click", () => {
   day.water = Math.max(0, (day.water || 0) + Number(b.dataset.water)); renderWater(); save();
 }));
 $("#editText").addEventListener("input", (e) => editorTarget?.(e.target.value));
-$("#editDlg").addEventListener("close", () => { editorTarget = null; });
+$("#editDlg").addEventListener("close", () => { stopDictation(); editorTarget = null; });
+$("#micBtn").hidden = !SpeechRec;
+$("#micBtn").addEventListener("click", () => (rec ? rec.stop() : startDictation()));
 $$(".tabbar button").forEach((b) => b.addEventListener("click", () => showView(b.dataset.view)));
 $("#exportJson").addEventListener("click", exportJson);
 $("#exportCsv").addEventListener("click", exportCsv);

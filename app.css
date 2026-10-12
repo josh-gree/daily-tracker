@@ -12,6 +12,7 @@
   --field: #fbfcfe;
   --am: #2b3990;
   --pm: #e0a91b;
+  --rec: #c62828;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -29,6 +30,7 @@
     --field: #161925;
     --am: #8f9cf0;
     --pm: #f0c04a;
+    --rec: #ff7070;
     color-scheme: dark;
   }
 }
@@ -46,6 +48,7 @@
   --field: #161925;
   --am: #8f9cf0;
   --pm: #f0c04a;
+  --rec: #ff7070;
   color-scheme: dark;
 }
 
@@ -152,7 +155,18 @@ dialog.editor {
 .editor .ctx { margin: 0; font-size: .8rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .editor h2 { margin: 0; font-size: 1.05rem; }
 .editor textarea { flex: 1; min-height: 6em; resize: none; font-size: 1.05rem; line-height: 1.5; padding: 12px 14px; }
-.editor .primary { margin-top: 4px; }
+.editor-actions { display: flex; gap: 8px; margin-top: 4px; }
+.editor-actions .primary { flex: 1; margin-top: 0; }
+.mic {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; flex: 1;
+  padding: 12px; border-radius: 10px; border: 1.5px solid var(--navy-soft);
+  background: var(--card); color: var(--navy); font-weight: 700; cursor: pointer;
+}
+.mic svg { width: 20px; height: 20px; fill: currentColor; flex: none; }
+.mic[data-state="listening"] { border-color: var(--rec); color: var(--rec); }
+.mic[data-state="listening"] svg { animation: mic-pulse 1.2s ease-in-out infinite; }
+@keyframes mic-pulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .mic[data-state="listening"] svg { animation: none; } }
 
 textarea {
   width: 100%; resize: vertical; border: 1px solid var(--line); border-radius: 10px;
