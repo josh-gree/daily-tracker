@@ -179,6 +179,7 @@ textarea:focus, input:focus { outline: 2px solid var(--navy); outline-offset: 1p
   width: 100%; padding: 12px; border-radius: 12px; border: 1.5px dashed var(--navy-soft);
   background: transparent; color: var(--navy); font-weight: 600;
 }
+.footnote { text-align: center; font-size: .75rem; color: var(--muted); margin: 4px 0 12px; }
 .saved { text-align: center; font-size: .8rem; color: var(--muted); }
 
 /* history */
@@ -201,7 +202,6 @@ textarea:focus, input:focus { outline: 2px solid var(--navy); outline-offset: 1p
 }
 #pdfDay { margin-top: 4px; }
 button:disabled { opacity: .6; }
-.prose p { margin: 0 0 10px; }
 
 /* tab bar */
 .tabbar {
@@ -221,8 +221,6 @@ dialog {
   max-height: 85vh; background: var(--card); color: var(--text);
 }
 dialog::backdrop { background: rgb(0 0 0 / .45); }
-.dlg-body h3 { margin: 12px 0 4px; font-size: .9rem; }
-.dlg-body p { margin: 0 0 6px; }
 #askDlg { width: min(420px, calc(100vw - 32px)); }
 #askDlg p { margin: 4px 0 12px; }
 .btnrow.end { justify-content: flex-end; }

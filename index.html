@@ -86,32 +86,15 @@
           <label class="btn">Import backup<input type="file" id="importFile" accept="application/json,.json" hidden></label>
         </div>
       </div>
+      <p class="footnote">App version <span id="appVersion"></span> · Based on the “My Daily Tracker” worksheet by Toby Morrison</p>
     </section>
 
-    <!-- ABOUT VIEW -->
-    <section id="view-about" class="view" hidden>
-      <div class="card prose">
-        <h2>Introduction</h2>
-        <p>This daily activity tracker helps you monitor your activity load, nutrition, movement, sleep, and energy levels. Over 7–14 days, track your daily routine to establish your baseline and identify what works best for you. We recommend logging consistently for 7–14 days to effectively gauge your progress.</p>
-        <p>Use the energy scale to rate your morning and evening energy levels on a scale of 1 to 10. Record your meals and water intake, noting how you feel after each meal. Document your daily activities, including walks, chores, work, or school hours. Reflect on your day with notes on what worked well, what didn't, and areas to focus on tomorrow.</p>
-        <p>By staying mindful of your activities, energy levels, and well-being, you can make meaningful strides towards your health goals.</p>
-        <button id="loadExample" class="ghost">See an example day</button>
-        <p class="muted small">Adapted from the “My Daily Tracker” worksheet by Toby Morrison.</p>
-        <p class="muted small">App version <span id="appVersion"></span></p>
-      </div>
-    </section>
   </main>
 
   <nav class="tabbar">
     <button data-view="day" class="active"><span>📝</span>Day</button>
     <button data-view="history"><span>📈</span>History</button>
-    <button data-view="about"><span>ℹ️</span>About</button>
   </nav>
-
-  <dialog id="exampleDlg">
-    <div class="dlg-body" id="exampleBody"></div>
-    <form method="dialog"><button class="primary">Close</button></form>
-  </dialog>
 
   <dialog id="editDlg" class="editor" aria-labelledby="editLabel">
     <form method="dialog">

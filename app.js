@@ -1,6 +1,6 @@
 "use strict";
 
-const APP_VERSION = "v11"; // keep in step with VERSION in sw.js
+const APP_VERSION = "v12"; // keep in step with VERSION in sw.js
 
 const STORE_KEY = "daily-tracker:v1";
 const DEFAULT_SLOTS = [
@@ -13,19 +13,6 @@ const DEFAULT_SLOTS = [
 ];
 const SLOT_FIELDS = ["nutrition", "activity", "feel"];
 
-const EXAMPLE = {
-  morning: 4, evening: 7, water: 6,
-  slots: [
-    { time: "7AM", meal: "Breakfast", nutrition: "Porridge with banana", activity: "Wake up 7am\n10 min walk", feel: "I felt okay." },
-    { time: "10AM", meal: "Snack", nutrition: "Protein smoothie", activity: "Saw a friend for 1 hour", feel: "Feel more sustained" },
-    { time: "12 noon", meal: "Lunch", nutrition: "Toasted cheese and avocado sandwich", activity: "Had a sleep for 2 hours\nMeditated at 4pm for 10 mins and did 5 mins of stretching", feel: "Feel hungry and lack energy" },
-    { time: "2PM", meal: "Snack", nutrition: "1 boiled egg and an apple", activity: "", feel: "Feel a bit better" },
-    { time: "7PM", meal: "Dinner", nutrition: "Falafel with chickpeas and spinach", activity: "Watched TV for 30 minutes", feel: "I felt a bit sick afterwards" },
-  ],
-  worked: "More protein in my meals seems to give me more energy.",
-  didnt: "I found that doing work at home and seeing a friend were all too tiring. I think I'm not up to doing so much in one day yet.",
-  focus: "Do work in smaller chunks, so as not to make myself too tired. I also want to try and walk for an extra 5 minutes.",
-};
 
 // ---------- storage ----------
 // Older entries had two "How I feel" notes per time slot (after eating and after
@@ -411,22 +398,6 @@ function exportPdfAll() {
   exportPdf(days, name, $("#pdfAll"), { summary: days.length > 1 });
 }
 
-// ---------- example ----------
-function showExample() {
-  const e = EXAMPLE;
-  const br = (s) => esc(s).replace(/\n/g, "<br>");
-  $("#exampleBody").innerHTML = `<h2>Example day</h2>
-    <p><b>Start of day:</b> ${e.morning}/10 &nbsp; <b>End of day:</b> ${e.evening}/10 &nbsp; <b>Water:</b> ${e.water} glasses</p>
-    ${e.slots.map((s) => `<h3>${esc(s.time)} — ${esc(s.meal)}</h3>
-      <p><b>Ate:</b> ${br(s.nutrition)}</p>
-      ${s.activity ? `<p><b>Did:</b> ${br(s.activity)}</p>` : ""}
-      ${s.feel ? `<p><b>Felt:</b> <i>${br(s.feel)}</i></p>` : ""}`).join("")}
-    <h3>Worked well</h3><p>${esc(e.worked)}</p>
-    <h3>Didn't work well</h3><p>${esc(e.didnt)}</p>
-    <h3>Focus for tomorrow</h3><p>${esc(e.focus)}</p>`;
-  $("#exampleDlg").showModal();
-}
-
 // ---------- views ----------
 function showView(name) {
   $$(".view").forEach((v) => { v.hidden = v.id !== `view-${name}`; });
@@ -455,7 +426,6 @@ $("#pdfAll").addEventListener("click", exportPdfAll);
 // A day with nothing filled in still exports, as a blank sheet to print and fill by hand.
 $("#pdfDay").addEventListener("click", () => exportPdf([{ iso: current, entry: day }], `daily-tracker-${current}.pdf`, $("#pdfDay")));
 $("#importFile").addEventListener("change", (e) => { const f = e.target.files[0]; if (f) importJson(f); e.target.value = ""; });
-$("#loadExample").addEventListener("click", showExample);
 
 // Pick up edits made in another tab/window, and roll over to the new day if the app was left open.
 window.addEventListener("storage", (e) => { if (e.key === STORE_KEY) { db = loadAll(); goTo(current); } });

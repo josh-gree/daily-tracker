@@ -21,7 +21,6 @@ Live: https://josh-gree.github.io/daily-tracker/
   exports just that day; an empty day exports as a blank sheet for printing.
   Long days continue onto extra pages. Uses the built-in Helvetica font, so emoji are
   dropped and non-Latin scripts show as "?".
-- About: the worksheet's intro and its example day.
 - Data is stored in `localStorage` on the device only; it autosaves on every change.
 
 ## Files
