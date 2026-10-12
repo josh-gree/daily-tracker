@@ -181,6 +181,7 @@ textarea:focus, input:focus { outline: 2px solid var(--navy); outline-offset: 1p
 }
 .footnote { text-align: center; font-size: .75rem; color: var(--muted); margin: 4px 0 12px; }
 .saved { text-align: center; font-size: .8rem; color: var(--muted); }
+.saved.tappable { color: var(--navy); text-decoration: underline; cursor: pointer; }
 
 /* history */
 #chart svg { width: 100%; height: auto; display: block; }

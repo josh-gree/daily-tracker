@@ -21,12 +21,16 @@ Live: https://josh-gree.github.io/daily-tracker/
   exports just that day; an empty day exports as a blank sheet for printing.
   Long days continue onto extra pages. Uses the built-in Helvetica font, so emoji are
   dropped and non-Latin scripts show as "?".
-- Data is stored in `localStorage` on the device only; it autosaves on every change.
+- Data is stored in `localStorage` on the device and autosaves on every change. When hosted on
+  Cloudflare Pages (see [docs/cloudflare-setup.md](docs/cloudflare-setup.md)), the site is private
+  behind Cloudflare Access and every change is also backed up to a D1 database and synced to
+  other devices. Elsewhere (e.g. GitHub Pages) the backup quietly stays off.
 
 ## Files
 `index.html`, `app.css`, `app.js`, `pdf-export.js` (PDF layout), `manifest.webmanifest`,
 `sw.js` (network-first service worker with an offline cache — bump `VERSION` here and `APP_VERSION` in `app.js` after changing any file), `icons/`,
-`vendor/pdf-lib.min.js` ([pdf-lib](https://pdf-lib.js.org) 1.17.1, MIT, loaded only when exporting).
+`vendor/pdf-lib.min.js` ([pdf-lib](https://pdf-lib.js.org) 1.17.1, MIT, loaded only when exporting),
+`functions/api/` (Cloudflare Pages Functions: `days.js` is the cloud copy, `_middleware.js` checks the Access sign-in).
 
 ## Run locally
     python3 -m http.server 8000   # then open http://localhost:8000
