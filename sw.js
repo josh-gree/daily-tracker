@@ -1,5 +1,5 @@
 // Bump VERSION (and APP_VERSION in app.js) whenever any app-shell file changes.
-const VERSION = "v12";
+const VERSION = "v13";
 const CACHE = `daily-tracker-${VERSION}`;
 const SHELL = [
   "./",

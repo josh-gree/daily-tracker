@@ -8,7 +8,7 @@
 (function () {
   const PAGE_W = 595.28, PAGE_H = 841.89;
   const L = 26, R = 563;                       // table left/right edges
-  const COLS = [26, 67, 230, 420, 563];        // time | nutrition | activities | how I feel
+  const COLS = [26, 67, 211, 305, 477, 563];   // time | nutrition | how I feel | activities | how I feel
   const SCALE_X = [64, 110, 161, 213, 264, 316, 367, 419, 470, 518];
   const BOTTOM = 32;                           // lowest y content may use
   const TABLE_BOTTOM_TARGET = 253;             // the original's table ends here on a one-page day
@@ -114,11 +114,11 @@
 
   function tableHeader(page, f, top) {
     const h = 27;
-    const fills = [C.timeHead, C.mint, C.yellow, C.blue];
-    const labels = ["TIME", "NUTRITION", "REST/MOVEMENT/ACTIVITIES", "HOW I FEEL"];
+    const fills = [C.timeHead, C.mint, C.mint, C.yellow, C.yellow];
+    const labels = ["TIME", "NUTRITION", "HOW I FEEL", "REST/MOVEMENT/ACTIVITIES", "HOW I FEEL"];
     for (let i = 0; i < labels.length; i++) {
       page.drawRectangle({ x: COLS[i], y: top - h, width: COLS[i + 1] - COLS[i], height: h, color: fills[i], borderColor: C.ink, borderWidth: 0.7 });
-      spaced(page, labels[i], { x: (COLS[i] + COLS[i + 1]) / 2, y: top - h / 2 - 2.8, size: 7.5, font: f.bold, color: C.ink, center: true, spacing: i === 2 ? 0.5 : 0.8 });
+      spaced(page, labels[i], { x: (COLS[i] + COLS[i + 1]) / 2, y: top - h / 2 - 2.8, size: 7.5, font: f.bold, color: C.ink, center: true, spacing: i === 3 ? 0.3 : 0.8 });
     }
     return top - h;
   }
@@ -129,8 +129,9 @@
     const cols = [
       wrap(safe(slot.time).toUpperCase(), f.reg, SMALL, width(0)),
       wrap(safe(slot.nutrition), f.reg, BODY, width(1)),
-      wrap(safe(slot.activity), f.reg, BODY, width(2)),
-      wrap(safe(slot.feel), f.reg, BODY, width(3)),
+      wrap(safe(slot.nutFeel), f.reg, BODY, width(2)),
+      wrap(safe(slot.activity), f.reg, BODY, width(3)),
+      wrap(safe(slot.actFeel), f.reg, BODY, width(4)),
     ];
     const meal = safe(slot.meal).toUpperCase();
     const row = { cols, meal, lead: meal ? 10 : 0 }; // lead leaves room for the BREAKFAST / SNACK label
